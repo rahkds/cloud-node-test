@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const https = require('https');
 
 const app = express()
 const port = process.env.PORT || 3000;
@@ -22,12 +23,36 @@ app.get('/instance', (req, res) => {
     res.json({ instanceId, availabilityZone });
 });
 
-function getMetadata(path) {
+function getIMDSToken() {
+  return new Promise((resolve, reject) => {
+    const options = {
+      method: 'PUT',
+      host: '169.254.169.254',
+      path: '/latest/api/token',
+      headers: {
+        'X-aws-ec2-metadata-token-ttl-seconds': '21600',
+      },
+    };
+
+    const req = http.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => (data += chunk));
+      res.on('end', () => resolve(data));
+    });
+
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+function fetchMetadataWithToken(path, token) {
   return new Promise((resolve, reject) => {
     const options = {
       host: '169.254.169.254',
       path: `/latest/meta-data/${path}`,
-      timeout: 1000
+      headers: {
+        'X-aws-ec2-metadata-token': token,
+      },
     };
 
     http.get(options, (res) => {
@@ -40,9 +65,10 @@ function getMetadata(path) {
 
 app.get('/info', async (req, res) => {
     try {
-        const instanceId = await getMetadata('instance-id');
-        const availabilityZone = await getMetadata('placement/availability-zone');
-        res.json({ instanceId, availabilityZone });
+        const token = await getIMDSToken();
+        const instanceId = await fetchMetadataWithToken('instance-id', token);
+        const az = await fetchMetadataWithToken('placement/availability-zone', token);
+        res.json({ instanceId, availabilityZone: az });
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch metadata' });
     }
