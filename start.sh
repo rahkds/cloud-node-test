@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/bin/bash -ex
 
 # Exit immediately if a command fails
-set -e
+set -ex
 
 sudo apt update
 
@@ -14,7 +14,9 @@ curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 # Install Node.js and npm
 sudo apt install -y nodejs
 
-cd $HOME
+echo "/home/$(whoami)";
+
+cd "/home/ubuntu"
 
 # Define your repo URL (replace with actual)
 REPO_URL="https://github.com/rahkds/cloud-node-test.git"
