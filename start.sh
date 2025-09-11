@@ -36,5 +36,5 @@ echo "Running npm install..."
 npm install
 
 # Start the server
-echo "Starting Node.js server..."
-node index.js
+# echo "Starting Node.js server..."
+# node index.js
