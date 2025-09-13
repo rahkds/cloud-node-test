@@ -9,6 +9,7 @@ const port = process.env.PORT || 3000;
 
 
 app.use((req, res, next) => {
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
     console.log(`${req.method} ${req.url}`);
     console.log('Headers:', req.headers);
     console.log('Query:', req.query);
