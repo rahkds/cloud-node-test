@@ -1,58 +1,29 @@
-import datetime
-import base64
-import urllib.parse
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import padding
+from datetime import datetime, timedelta, timezone
+from botocore.signers import CloudFrontSigner
+import rsa
 
-# === CONFIGURATION ===
-key_pair_id = 'K3B45XA5ZNKKM6'  # Replace with your CloudFront Key Pair ID
-private_key_path = 'private.pem'
-cloudfront_url = 'https://d2fepkel96vivf.cloudfront.net/beach.jpg'
-expire_date = datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+# Path to your CloudFront private key
+private_key_path = 'private-key.pem'
 
-# === LOAD PRIVATE KEY ===
-with open(private_key_path, 'rb') as f:
-    private_key = serialization.load_pem_private_key(f.read(), password=None)
+# Your CloudFront distribution's key pair ID
+key_pair_id = 'key-pair-id'
 
-# === CREATE POLICY ===
-epoch_expire_time = int(expire_date.timestamp())
+# CloudFront URL (your content's CloudFront URL)
+url = 'https://d3t8s5utz027dz.cloudfront.net/beach.jpg'
 
-policy = f'''{{
-    "Statement": [
-        {{
-            "Resource": "{cloudfront_url}",
-            "Condition": {{
-                "DateLessThan": {{
-                    "AWS:EpochTime": {epoch_expire_time}
-                }}
-            }}
-        }}
-    ]
-}}'''
+# Function to sign the URL
+def rsa_signer(message):
+    with open(private_key_path, 'rb') as f:
+        private_key = rsa.PrivateKey.load_pkcs1(f.read())
+    return rsa.sign(message, private_key, 'SHA-1')
 
-# === SIGN POLICY ===
-signature = private_key.sign(
-    policy.encode('utf-8'),
-    padding.PKCS1v15(),
-    hashes.SHA1()
-)
+# Set expiration time (e.g., 1 hour)
+expire_time = datetime.now(timezone.utc) + timedelta(hours=1)
 
-# === ENCODE TO URL-SAFE BASE64 ===
-def url_safe_base64(data):
-    return base64.b64encode(data).decode('utf-8').replace('+', '-').replace('=', '_').replace('/', '~')
+# Initialize the CloudFrontSigner instance
+signer = CloudFrontSigner(key_pair_id, rsa_signer)
 
-encoded_signature = url_safe_base64(signature)
-encoded_policy = url_safe_base64(policy.encode('utf-8'))
+# Generate the presigned URL
+signed_url = signer.generate_presigned_url(url, date_less_than=expire_time)
 
-# === BUILD SIGNED URL ===
-signed_url = (
-    f"{cloudfront_url}"
-    f"?Policy={encoded_policy}"
-    f"&Signature={encoded_signature}"
-    f"&Key-Pair-Id={key_pair_id}"
-)
-
-print("🔐 Signed URL:")
-print(signed_url)
-
-
+print(f"Presigned URL: {signed_url}")
