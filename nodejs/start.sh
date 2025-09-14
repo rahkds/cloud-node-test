@@ -29,7 +29,7 @@ echo "Cloning repository from $REPO_URL..."
 git clone "$REPO_URL"
 
 # Navigate into the cloned directory
-cd "$REPO_NAME"
+cd "$REPO_NAME/nodejs"
 
 # Install dependencies
 echo "Running npm install..."
